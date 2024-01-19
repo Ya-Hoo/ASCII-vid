@@ -1,51 +1,130 @@
-import youtube_dl
-import os, cv2
+import yt_dlp, os, cv2, time
+import tkinter as tk
 
-link = "https://www.youtube.com/watch?v=UkgK8eUdpAo"
+from PIL import Image, ImageTk
+from ffpyplayer.player import MediaPlayer
 
-def download_video(url: str) -> None:
+
+def download_video(url: str, sound: bool=True) -> None:
+    # download vid
     ydl_opts = {
         'format':'best',
-        'outtmpl': '/video/vid.mp4'
+        'outtmpl': '/media/video/vid.mp4'
     }
-    with youtube_dl.YoutubeDL(ydl_opts) as ydl:
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
-        
-        
-# convert to ascii
-def toASCII(RGB):
-    # Source https://stackoverflow.com/a/17619494
-    R, G, B = tuple(map(lambda x: x / 255, RGB))
-    C_linear = 0.2126*R + 0.7152*G + 0.0722*B
-    if C_linear <= 0.0031308:
-        gray = C_linear * 12.92
-    else:
-        gray = 1.055 * pow(C_linear, 1/2.4) -0.055
     
+    # download sound
+    if sound:
+        ydl_opts = {
+            'format': 'bestaudio/best',
+            'outtmpl': '/media/audio/aud.mp3'
+        }
+        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+            ydl.download([url])
+        
+# convert gray --> ascii
+def toASCII(gray: int) -> str:    
     density = " .:-=+*#%@"
-    return density[int(gray * len(density))]
+    return density[int(gray* len(density) / 256)]
 
-if not os.path.exists('./video/vid.mp4'):
-    download_video(link)
 
-cap = cv2.VideoCapture('./video/vid.mp4')
-time_count = 0
-
-while cap.isOpened():
-    cap.set(0, time_count)
-    success, frame = cap.read()
-    if success:
-        h, w, _ = frame.shape
-        frame = cv2.resize(frame, (75, int(h/w*75)))
-        H, W, _ = frame.shape
+if __name__ == "__main__":
+    print("================ CHOOSE VIDEO SOURCE ================")
+    source = int(input("Option 1: YouTube video\nOption 2: Camera feed\nOption 3: File on system\n\nEnter choice: "))
+    if source == 2:
+        print("=================== CHOOSE CAMERA ===================")
+        front_back = int(input("Option 1: Webcam\nOption 2: Back cam\n\nEnter choice: "))
+        vid = cv2.VideoCapture(front_back-1)
+    else:
+        if source == 1:
+            link = input("Put YouTube link: ")
+            sound_bool = input("Want sound? (y/n): ")
+            download_video(link, sound=sound_bool)
         
+        # configure video and audio
+        vid = cv2.VideoCapture('./media/video/vid.mp4')
+        audio_player: MediaPlayer
+        audio_player_options = {
+            'autoexit': True,
+            'vn': True,
+            'sn': True
+        }
+        audio_player = MediaPlayer('./media/audio/aud.mp3', ff_opts=audio_player_options)
+
+    # create window
+    window = tk.Tk()
+    window.state('zoomed')
+    window.title("Video in ASCII")
+    screenW= window.winfo_screenwidth()               
+    screenH= window.winfo_screenheight() 
+    
+    
+    # creates two frame to divide window in half
+    window.columnconfigure(0, weight=1)
+    window.columnconfigure(1, weight=1)
+    lframe = tk.Frame(window, height=screenH)
+    lframe.grid(row=0, column=0, sticky="nsew")
+    lframe.columnconfigure(0, weight=1)
+    lframe.rowconfigure(0, weight=1)
+    rframe = tk.Frame(window, height=screenH)
+    rframe.grid(row=0, column=1, sticky="nsew")
+    rframe.columnconfigure(0, weight=1)
+    rframe.rowconfigure(0, weight=1)
+    
+    # create label to put results in
+    label = tk.Text(lframe, font=('courier', 8), bg="red")
+    label.grid(row=0, column=0, sticky="nsew")
+    
+    # create canvas to put original video in
+    canvas = tk.Canvas(rframe, height=screenH, bg="green")
+    canvas.grid(row=0, column=0, sticky="nsew")
+    
+    # frame stats to sync vid and sound
+    frame_t = 1000 / vid.get(cv2.CAP_PROP_FPS)
+    frame_counter = 0
+    prev_finish_t = 0.0
+    accumulation = 0.0
+    
+    # displaying frames
+    def next_frame():
+        global time_count, frame_counter, prev_finish_t, accumulation
+        success, frame = vid.read()
+        start_t = time.time()
+        
+        # place actual video on canvas
+        currentImage = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        photo = ImageTk.PhotoImage(image=currentImage)
+        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+        canvas.image=photo
+        
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        h, w = frame.shape
+        frame = cv2.resize(frame, (int(w/h*75), 75))
+        H, _ = frame.shape
+        
+        # where the magic happens
         pic = ""
-        
         for y in range(H):
-            for x in range(W):
-                pic += toASCII(frame[y, x])
-            pic += "\n"
+            pic += "".join(list(map(toASCII, frame[y]))) + "\n"
             
-        print(pic, flush=True)
-            
-    time_count += 60
+        label.delete(1.0, "end-1c")
+        label.insert("end-1c", pic)
+        
+        # syncing vid and audio
+        frame_counter += 1
+        if success:
+            finish_t = time.time()
+            t_difference = frame_t - (finish_t - prev_finish_t) * 1000
+            accumulation += t_difference * (frame_counter > 2)
+            dt = frame_t - (finish_t - start_t) * 1000 + accumulation
+            prev_finish_t = finish_t
+            if dt >= 0:
+                window.after(int(dt), next_frame)
+            else:
+                window.after(0, next_frame)
+        
+    window.after(0, next_frame)
+    window.mainloop()
+    
+    
