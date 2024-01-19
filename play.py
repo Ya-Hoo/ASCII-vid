@@ -5,7 +5,7 @@ from PIL import Image, ImageTk
 from ffpyplayer.player import MediaPlayer
 
 
-def download_video(url: str, sound: bool=True) -> None:
+def download_video(url: str) -> None:
     # download vid
     ydl_opts = {
         'format':'best',
@@ -15,13 +15,12 @@ def download_video(url: str, sound: bool=True) -> None:
         ydl.download([url])
     
     # download sound
-    if sound:
-        ydl_opts = {
-            'format': 'bestaudio/best',
-            'outtmpl': '/media/audio/aud.mp3'
-        }
-        with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-            ydl.download([url])
+    ydl_opts = {
+        'format': 'bestaudio/best',
+        'outtmpl': '/media/audio/aud.mp3'
+    }
+    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
+        ydl.download([url])
         
 # convert gray --> ascii
 def toASCII(gray: int) -> str:    
@@ -39,8 +38,7 @@ if __name__ == "__main__":
     else:
         if source == 1:
             link = input("Put YouTube link: ")
-            sound_bool = input("Want sound? (y/n): ")
-            download_video(link, sound=sound_bool)
+            download_video(link)
         
         # configure video and audio
         vid = cv2.VideoCapture('./media/video/vid.mp4')
