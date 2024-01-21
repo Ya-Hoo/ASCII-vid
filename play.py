@@ -1,4 +1,4 @@
-import yt_dlp, os, cv2, time
+import yt_dlp, cv2, time
 import tkinter as tk
 
 from PIL import Image, ImageTk
@@ -24,8 +24,7 @@ def download_video(url: str) -> None:
         
 # convert gray --> ascii
 def toASCII(gray: int) -> str:    
-    density = " .:-=+*#%@"
-    return density[int(gray* len(density) / 256)]
+    return density[int(gray * pixel_factor)]
 
 
 if __name__ == "__main__":
@@ -50,16 +49,20 @@ if __name__ == "__main__":
         }
         audio_player = MediaPlayer('./media/audio/aud.mp3', ff_opts=audio_player_options)
 
+    # constants
+    density = ['  ', '..', ',,', '--', '~~', '::', ';;', '==', '!!', '**', '##', '$$', '@@'][::-1]
+    pixel_num = len(density)
+    pixel_factor = pixel_num / 256
+
     # create window
     window = tk.Tk()
     window.state('zoomed')
     window.title("Video in ASCII")
-    screenW= window.winfo_screenwidth()               
-    screenH= window.winfo_screenheight() 
+    screenW = window.winfo_screenwidth()
+    screenH = window.winfo_screenheight()
     
-    
-    # creates two frame to divide window in half
-    window.columnconfigure(0, weight=1)
+    # creates two frame to divide window in 2/3
+    window.columnconfigure(0, weight=7)
     window.columnconfigure(1, weight=1)
     lframe = tk.Frame(window, height=screenH)
     lframe.grid(row=0, column=0, sticky="nsew")
@@ -89,22 +92,23 @@ if __name__ == "__main__":
         global time_count, frame_counter, prev_finish_t, accumulation
         success, frame = vid.read()
         start_t = time.time()
+        h, w = len(frame), len(frame[0])
         
         # place actual video on canvas
-        currentImage = Image.fromarray(cv2.cvtColor(frame, cv2.COLOR_BGR2RGB))
+        small_frame = cv2.resize(frame, dsize=(int(w/h*250), 250), interpolation=cv2.INTER_CUBIC)
+        currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
         photo = ImageTk.PhotoImage(image=currentImage)
         canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-        canvas.image=photo
+        canvas.image = photo
         
-        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        h, w = frame.shape
-        frame = cv2.resize(frame, (int(w/h*75), 75))
-        H, _ = frame.shape
+        ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
+        ascii_frame = cv2.resize(ascii_frame, dsize=(int(w/h*75), 75), interpolation=cv2.INTER_CUBIC)
+        H = ascii_frame.shape[0]
         
         # where the magic happens
         pic = ""
         for y in range(H):
-            pic += "".join(list(map(toASCII, frame[y]))) + "\n"
+            pic += "".join(list(map(toASCII, ascii_frame[y]))) + "\n"
             
         label.delete(1.0, "end-1c")
         label.insert("end-1c", pic)
@@ -117,7 +121,7 @@ if __name__ == "__main__":
             accumulation += t_difference * (frame_counter > 2)
             dt = frame_t - (finish_t - start_t) * 1000 + accumulation
             prev_finish_t = finish_t
-            if dt >= 0:
+            if dt > 0:
                 window.after(int(dt), next_frame)
             else:
                 window.after(0, next_frame)
