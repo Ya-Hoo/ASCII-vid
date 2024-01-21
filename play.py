@@ -95,7 +95,7 @@ if __name__ == "__main__":
         h, w = len(frame), len(frame[0])
         
         # place actual video on canvas
-        small_frame = cv2.resize(frame, dsize=(int(w/h*250), 250), interpolation=cv2.INTER_CUBIC)
+        small_frame = cv2.resize(frame, dsize=(int(w/h*375), 375), interpolation=cv2.INTER_CUBIC)
         currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
         photo = ImageTk.PhotoImage(image=currentImage)
         canvas.create_image(0, 0, image=photo, anchor=tk.NW)
