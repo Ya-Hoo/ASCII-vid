@@ -74,11 +74,11 @@ if __name__ == "__main__":
     rframe.rowconfigure(0, weight=1)
     
     # create label to put results in
-    label = tk.Text(lframe, font=('courier', 8), bg="red")
+    label = tk.Text(lframe, font=('courier', 8))
     label.grid(row=0, column=0, sticky="nsew")
     
     # create canvas to put original video in
-    canvas = tk.Canvas(rframe, height=screenH, bg="green")
+    canvas = tk.Canvas(rframe, height=screenH)
     canvas.grid(row=0, column=0, sticky="nsew")
     
     # frame stats to sync vid and sound
