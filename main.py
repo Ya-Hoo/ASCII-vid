@@ -1,4 +1,4 @@
-import yt_dlp, cv2, time
+import yt_dlp, cv2, time, random
 import tkinter as tk
 
 from PIL import Image, ImageTk
@@ -23,8 +23,11 @@ def download_video(url: str) -> None:
         ydl.download([url])
         
 # convert gray --> ascii
-def toASCII(gray: int) -> str:    
-    return density[int(gray * pixel_factor)]
+def toASCII(gray: int) -> str:
+    index = int(gray * pixel_factor)
+    if index % 2:
+        return density[index]
+    return ''.join(random.sample(density[index], 2))
 
 
 if __name__ == "__main__":
@@ -50,7 +53,7 @@ if __name__ == "__main__":
         audio_player = MediaPlayer('./media/audio/aud.mp3', ff_opts=audio_player_options)
 
     # constants
-    density = ['  ', '..', ',,', '--', '~~', '::', ';;', '==', '!!', '**', '##', '$$', '@@'][::-1]
+    density = ['@@', '$@', '$$', '#$', '##', '*#', '**', '!*', '!!', '=!', '==', ';=', ';;', ':;', '::', '~:', '~~', '-~', '--', ',-', ',,', '.,', '..', ' .', '  ']
     pixel_num = len(density)
     pixel_factor = pixel_num / 256
 
@@ -61,7 +64,9 @@ if __name__ == "__main__":
     screenW = window.winfo_screenwidth()
     screenH = window.winfo_screenheight()
     
-    # creates two frame to divide window in 2/3
+    resize_factor = int(screenH * 5 / 72)
+    
+    # creates two frame to divide window
     window.columnconfigure(0, weight=7)
     window.columnconfigure(1, weight=1)
     lframe = tk.Frame(window, height=screenH)
@@ -74,7 +79,7 @@ if __name__ == "__main__":
     rframe.rowconfigure(0, weight=1)
     
     # create label to put results in
-    label = tk.Text(lframe, font=('courier', 8))
+    label = tk.Text(lframe, font=('courier', 8, 'bold'),spacing2=20)
     label.grid(row=0, column=0, sticky="nsew")
     
     # create canvas to put original video in
@@ -95,14 +100,14 @@ if __name__ == "__main__":
         h, w = len(frame), len(frame[0])
         
         # place actual video on canvas
-        small_frame = cv2.resize(frame, dsize=(int(w/h*375), 375), interpolation=cv2.INTER_CUBIC)
+        small_frame = cv2.resize(frame, dsize=(int(w/h*resize_factor*5), resize_factor * 5), interpolation=cv2.INTER_CUBIC)
         currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
         photo = ImageTk.PhotoImage(image=currentImage)
         canvas.create_image(0, 0, image=photo, anchor=tk.NW)
         canvas.image = photo
         
         ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        ascii_frame = cv2.resize(ascii_frame, dsize=(int(w/h*75), 75), interpolation=cv2.INTER_CUBIC)
+        ascii_frame = cv2.resize(ascii_frame, dsize=(int(w/h*resize_factor), resize_factor), interpolation=cv2.INTER_CUBIC)
         H = ascii_frame.shape[0]
         
         # where the magic happens
