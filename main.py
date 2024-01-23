@@ -1,5 +1,6 @@
-import yt_dlp, cv2, time, random
+import yt_dlp, cv2, time, random, ctypes
 import tkinter as tk
+import numpy as np
 
 from PIL import Image, ImageTk
 from ffpyplayer.player import MediaPlayer
@@ -27,7 +28,11 @@ def toASCII(gray: int) -> str:
     index = int(gray * pixel_factor)
     if index % 2:
         return density[index]
-    return ''.join(random.sample(density[index], 2))
+    
+    # randomise the string so that it has a smoother gradient?
+    if random.randint(0, 1):
+        return density[index]
+    return density[index][::-1]
 
 
 if __name__ == "__main__":
@@ -53,7 +58,7 @@ if __name__ == "__main__":
         audio_player = MediaPlayer('./media/audio/aud.mp3', ff_opts=audio_player_options)
 
     # constants
-    density = ['@@', '$@', '$$', '#$', '##', '*#', '**', '!*', '!!', '=!', '==', ';=', ';;', ':;', '::', '~:', '~~', '-~', '--', ',-', ',,', '.,', '..', ' .', '  ']
+    density = np.array(['@@', '$@', '$$', '#$', '##', '*#', '**', '!*', '!!', '=!', '==', ';=', ';;', ':;', '::', '~:', '~~', '-~', '--', ',-', ',,', '.,', '..', ' .', '  '])
     pixel_num = len(density)
     pixel_factor = pixel_num / 256
 
@@ -63,28 +68,23 @@ if __name__ == "__main__":
     window.title("Video in ASCII")
     screenW = window.winfo_screenwidth()
     screenH = window.winfo_screenheight()
+    ctypes.windll.shcore.SetProcessDpiAwareness(2)
+    titleH = ctypes.windll.user32.GetSystemMetrics(4)
     
-    resize_factor = int(screenH * 5 / 72)
+    resize_factor = int((screenH - titleH) // 14)
     
     # creates two frame to divide window
     window.columnconfigure(0, weight=7)
     window.columnconfigure(1, weight=1)
-    lframe = tk.Frame(window, height=screenH)
-    lframe.grid(row=0, column=0, sticky="nsew")
-    lframe.columnconfigure(0, weight=1)
-    lframe.rowconfigure(0, weight=1)
-    rframe = tk.Frame(window, height=screenH)
-    rframe.grid(row=0, column=1, sticky="nsew")
-    rframe.columnconfigure(0, weight=1)
-    rframe.rowconfigure(0, weight=1)
+    window.rowconfigure(0, weight=1)
     
     # create label to put results in
-    label = tk.Text(lframe, font=('courier', 8, 'bold'),spacing2=20)
+    label = tk.Text(window, font=('courier', 8))
     label.grid(row=0, column=0, sticky="nsew")
     
     # create canvas to put original video in
-    canvas = tk.Canvas(rframe, height=screenH)
-    canvas.grid(row=0, column=0, sticky="nsew")
+    canvas = tk.Canvas(window)
+    canvas.grid(row=0, column=1, sticky="nsew")
     
     # frame stats to sync vid and sound
     frame_t = 1000 / vid.get(cv2.CAP_PROP_FPS)
@@ -106,11 +106,11 @@ if __name__ == "__main__":
         canvas.create_image(0, 0, image=photo, anchor=tk.NW)
         canvas.image = photo
         
+        # where the magic happens
         ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ascii_frame = cv2.resize(ascii_frame, dsize=(int(w/h*resize_factor), resize_factor), interpolation=cv2.INTER_CUBIC)
         H = ascii_frame.shape[0]
         
-        # where the magic happens
         pic = ""
         for y in range(H):
             pic += "".join(list(map(toASCII, ascii_frame[y]))) + "\n"
