@@ -71,8 +71,6 @@ if __name__ == "__main__":
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
     titleH = ctypes.windll.user32.GetSystemMetrics(4)
     
-    resize_factor = int((screenH - titleH) // 14)
-    
     # creates two frame to divide window
     window.columnconfigure(0, weight=7)
     window.columnconfigure(1, weight=1)
@@ -94,29 +92,35 @@ if __name__ == "__main__":
     
     # displaying frames
     def next_frame():
-        global time_count, frame_counter, prev_finish_t, accumulation
+        global time_count, frame_counter, prev_finish_t, accumulation, screenW, screenH
         success, frame = vid.read()
         start_t = time.time()
         h, w = len(frame), len(frame[0])
         
-        # place actual video on canvas
-        small_frame = cv2.resize(frame, dsize=(int(w/h*resize_factor*5), resize_factor * 5), interpolation=cv2.INTER_CUBIC)
-        currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
-        photo = ImageTk.PhotoImage(image=currentImage)
-        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-        canvas.image = photo
-        
         # where the magic happens
+        ascii_resizedH = int((screenH - titleH) // 14)
+        ascii_resizedW = int(w/h*ascii_resizedH)
         ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        ascii_frame = cv2.resize(ascii_frame, dsize=(int(w/h*resize_factor), resize_factor), interpolation=cv2.INTER_CUBIC)
-        H = ascii_frame.shape[0]
+        ascii_frame = cv2.resize(ascii_frame, dsize=(ascii_resizedW, ascii_resizedH), interpolation=cv2.INTER_CUBIC)
+        col = ascii_frame.shape[0]
         
         pic = ""
-        for y in range(H):
+        for y in range(col):
             pic += "".join(list(map(toASCII, ascii_frame[y]))) + "\n"
             
         label.delete(1.0, "end-1c")
         label.insert("end-1c", pic)
+        
+        
+        # place actual video on canvas
+        label.update()
+        vid_resizedW = screenW - label.winfo_width()
+        vid_resizedH = int(h/w*vid_resizedW)
+        small_frame = cv2.resize(frame, dsize=(vid_resizedW, vid_resizedH), interpolation=cv2.INTER_CUBIC)
+        currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
+        photo = ImageTk.PhotoImage(image=currentImage)
+        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+        canvas.image = photo
         
         # syncing vid and audio
         frame_counter += 1
