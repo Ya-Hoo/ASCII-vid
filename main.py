@@ -34,6 +34,8 @@ def toASCII(gray: int) -> str:
         return density[index]
     return density[index][::-1]
 
+vectorised_toASCII = np.vectorize(toASCII)
+
 
 if __name__ == "__main__":
     print("================ CHOOSE VIDEO SOURCE ================")
@@ -102,25 +104,22 @@ if __name__ == "__main__":
         ascii_resizedW = int(w/h*ascii_resizedH)
         ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ascii_frame = cv2.resize(ascii_frame, dsize=(ascii_resizedW, ascii_resizedH), interpolation=cv2.INTER_CUBIC)
-        col = ascii_frame.shape[0]
         
-        pic = ""
-        for y in range(col):
-            pic += "".join(list(map(toASCII, ascii_frame[y]))) + "\n"
+        pic = "\n".join([''.join(line) for line in vectorised_toASCII(ascii_frame)])
             
         label.delete(1.0, "end-1c")
         label.insert("end-1c", pic)
         
-        
         # place actual video on canvas
         label.update()
         vid_resizedW = screenW - label.winfo_width()
-        vid_resizedH = int(h/w*vid_resizedW)
-        small_frame = cv2.resize(frame, dsize=(vid_resizedW, vid_resizedH), interpolation=cv2.INTER_CUBIC)
-        currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
-        photo = ImageTk.PhotoImage(image=currentImage)
-        canvas.create_image(0, 0, image=photo, anchor=tk.NW)
-        canvas.image = photo
+        if vid_resizedW >= screenW // 5:
+            vid_resizedH = int(h/w*vid_resizedW)
+            small_frame = cv2.resize(frame, dsize=(vid_resizedW, vid_resizedH), interpolation=cv2.INTER_CUBIC)
+            currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
+            photo = ImageTk.PhotoImage(image=currentImage)
+            canvas.create_image(0, 0, image=photo, anchor=tk.NW)
+            canvas.image = photo
         
         # syncing vid and audio
         frame_counter += 1
