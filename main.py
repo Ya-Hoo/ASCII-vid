@@ -1,40 +1,11 @@
-import yt_dlp, cv2, time, random, ctypes
+import cv2, time, ctypes
 import tkinter as tk
 import numpy as np
 
+from functions import *
+
 from PIL import Image, ImageTk
 from ffpyplayer.player import MediaPlayer
-
-
-def download_video(url: str) -> None:
-    # download vid
-    ydl_opts = {
-        'format':'best',
-        'outtmpl': '/media/video/vid.mp4'
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-    
-    # download sound
-    ydl_opts = {
-        'format': 'bestaudio/best',
-        'outtmpl': '/media/audio/aud.mp3'
-    }
-    with yt_dlp.YoutubeDL(ydl_opts) as ydl:
-        ydl.download([url])
-        
-# convert gray --> ascii
-def toASCII(gray: int) -> str:
-    index = int(gray * pixel_factor)
-    if index % 2:
-        return density[index]
-    
-    # randomise the string so that it has a smoother gradient?
-    if random.randint(0, 1):
-        return density[index]
-    return density[index][::-1]
-
-vectorised_toASCII = np.vectorize(toASCII)
 
 
 if __name__ == "__main__":
@@ -100,12 +71,13 @@ if __name__ == "__main__":
         h, w = len(frame), len(frame[0])
         
         # where the magic happens
-        ascii_resizedH = int((screenH - titleH) // 14)
-        ascii_resizedW = int(w/h*ascii_resizedH)
+        ascii_resizedH = (screenH - titleH) // 8
+        ascii_resizedW = w//h * ascii_resizedH
         ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ascii_frame = cv2.resize(ascii_frame, dsize=(ascii_resizedW, ascii_resizedH), interpolation=cv2.INTER_CUBIC)
         
-        pic = "\n".join([''.join(line) for line in vectorised_toASCII(ascii_frame)])
+        # used matrix multiplication so brrrrrrr
+        pic = join2D(density[(ascii_frame * pixel_factor).astype(int)])
             
         label.delete(1.0, "end-1c")
         label.insert("end-1c", pic)
@@ -113,8 +85,8 @@ if __name__ == "__main__":
         # place actual video on canvas
         label.update()
         vid_resizedW = screenW - label.winfo_width()
-        if vid_resizedW >= screenW // 5:
-            vid_resizedH = int(h/w*vid_resizedW)
+        if vid_resizedW >= screenW // 7:
+            vid_resizedH = h//w * vid_resizedW
             small_frame = cv2.resize(frame, dsize=(vid_resizedW, vid_resizedH), interpolation=cv2.INTER_CUBIC)
             currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
             photo = ImageTk.PhotoImage(image=currentImage)
