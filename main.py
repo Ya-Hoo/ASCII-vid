@@ -43,7 +43,6 @@ if __name__ == "__main__":
     screenH = window.winfo_screenheight()
     ctypes.windll.shcore.SetProcessDpiAwareness(2)
     titleH = ctypes.windll.user32.GetSystemMetrics(4)
-    
     # creates two frame to divide window
     window.columnconfigure(0, weight=7)
     window.columnconfigure(1, weight=1)
@@ -71,7 +70,7 @@ if __name__ == "__main__":
         h, w = len(frame), len(frame[0])
         
         # where the magic happens
-        ascii_resizedH = (screenH - titleH) // 8
+        ascii_resizedH = (screenH - titleH) // 12
         ascii_resizedW = w//h * ascii_resizedH
         ascii_frame = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
         ascii_frame = cv2.resize(ascii_frame, dsize=(ascii_resizedW, ascii_resizedH), interpolation=cv2.INTER_CUBIC)
@@ -81,12 +80,12 @@ if __name__ == "__main__":
             
         label.delete(1.0, "end-1c")
         label.insert("end-1c", pic)
+        label.update()
         
         # place actual video on canvas
-        label.update()
         vid_resizedW = screenW - label.winfo_width()
         if vid_resizedW >= screenW // 7:
-            vid_resizedH = h//w * vid_resizedW
+            vid_resizedH = h * vid_resizedW // w
             small_frame = cv2.resize(frame, dsize=(vid_resizedW, vid_resizedH), interpolation=cv2.INTER_CUBIC)
             currentImage = Image.fromarray(cv2.cvtColor(small_frame, cv2.COLOR_BGR2RGB))
             photo = ImageTk.PhotoImage(image=currentImage)
