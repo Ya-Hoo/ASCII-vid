@@ -12,8 +12,8 @@ def download_media(url: str) -> None:
         'outtmpl': './media/video/vid.mp4',
         'overwrites': True,
     }
-    with YoutubeDL(ydl_opts) as ydl:
+    with YoutubeDL(ydl_opts) as ydl:  # type: ignore
         ydl.download([url])
 
-def join_2d_array(array: list[list[str]]) -> str:
-    return '\n'.join(''.join(row) for row in array) + '\n'
+def join_2d_array(array: Any) -> str:
+    return '\n'.join(map(''.join, array)) + '\n'
